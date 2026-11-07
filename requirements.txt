@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+httpx
+numpy
+networkx
+sentence-transformers
+anthropic

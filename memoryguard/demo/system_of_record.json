@@ -1,0 +1,23 @@
+{
+  "_note": "Verified vendor payee details - the source of truth. All names and numbers are fictional.",
+  "vendors": {
+    "Acme Supplies": {
+      "account": "4021-7783-1190",
+      "bank": "Northbridge Bank",
+      "branch_code": "NBB0042",
+      "verified_on": "2026-03-14"
+    },
+    "Bharat Logistics": {
+      "account": "5530-2196-4478",
+      "bank": "Coastal Union Bank",
+      "branch_code": "CUB0117",
+      "verified_on": "2026-01-22"
+    },
+    "Nova Packaging": {
+      "account": "6687-0412-9935",
+      "bank": "Meridian Trust Bank",
+      "branch_code": "MTB0309",
+      "verified_on": "2026-05-02"
+    }
+  }
+}

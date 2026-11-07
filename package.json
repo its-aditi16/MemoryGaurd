@@ -1,0 +1,9 @@
+{
+  "name": "memoryguard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node dev.mjs",
+    "smoke": "cd memoryguard && ..\\.venv\\Scripts\\python -m demo.smoke_test 3"
+  }
+}
