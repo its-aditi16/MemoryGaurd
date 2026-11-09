@@ -8,8 +8,11 @@ ACCOUNT_RE = re.compile(r"\b\d{4}[- ]\d{4}[- ]\d{4}\b|\b[A-Z]{2}\d{2}[A-Z0-9]{10
 HIGH_IMPACT_PATTERNS = {
     "bank_account": r"\b(bank|account number|account no|iban|routing|branch code|ifsc|swift)\b",
     "recipient": r"\b(recipient|beneficiary|payee|pay(ment)?s? to|send (the )?(money|funds|payment))\b",
-    "permission": r"\b(permission|admin|access rights?|approv(e|al) limit|authori[sz]ed)\b",
+    "permission": r"\b(permissions?|admin|access rights?|approv(e|al|als)|authori[sz](e|ed|ation))\b",
     "contact": r"\b(contact|email address|phone|@[\w-]+\.\w+)\b",
+    # A memory that tries to set who the agent trusts or recommends from now on changes future decisions.
+    "standing_trust_instruction": r"\b(remember|store|save|keep|treat|memori[sz]e)\b.{0,80}?\b(trusted|authoritative|"
+                                  r"preferred|go-to|official|recommended)\b.{0,40}\b(source|site|website|provider|reference)",
 }
 
 

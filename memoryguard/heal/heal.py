@@ -5,6 +5,7 @@ needs a human Approve click.
 """
 import json
 import time
+from datetime import datetime, timedelta, timezone
 
 import db
 from guard import fields
@@ -114,19 +115,27 @@ def heal() -> dict:
 
 
 def _poisoned_accounts() -> set[str]:
-    """Account numbers in vaulted memories that are not verified accounts."""
+    """Unverified account numbers and outside email addresses found in vaulted memories."""
+    from guard.privacy import EMAIL_RE
+
     verified = {fields.normalize_account(fields.verified_account(v)) for v in fields.config.system_of_record()}
-    accts = set()
+    d = fields.config.directory()
+    bad = set()
     for row in db.query("SELECT content FROM vault WHERE state = 'quarantined'"):
-        accts |= {fields.normalize_account(a) for a in fields.extract_accounts(row["content"])}
-    return accts - verified
+        bad |= {fields.normalize_account(a) for a in fields.extract_accounts(row["content"])} - verified
+        bad |= {fields.normalize_account(e) for e in EMAIL_RE.findall(row["content"])
+                if not e.lower().endswith("@" + d["internal_domain"])}
+    return bad
 
 
 def _is_fixed(answer: dict, bad_accounts: set[str]) -> bool:
     used_bad_memory = any(m["status"] == "quarantined" for m in answer["memories"])
-    text = answer["answer"] + json.dumps(answer["payment"] or {})
+    text = (answer["answer"] + json.dumps(answer["payment"] or {}) + json.dumps(answer.get("email") or {})
+            + json.dumps((answer.get("action") or {}).get("data") or {}))
     mentions_bad = any(a in fields.normalize_account(text) for a in bad_accounts)
-    gate_ok = not answer["gate"] or answer["gate"]["decision"] == "allow"
+    g = answer["gate"]
+    # Safe = allowed, or refused by the source of truth alone (no poisoned memory backing the request).
+    gate_ok = not g or g["decision"] == "allow" or (g["decision"] == "block" and not g.get("supporting_ids"))
     return not used_bad_memory and not mentions_bad and gate_ok
 
 
@@ -136,6 +145,13 @@ def _summary(answer: dict) -> str:
         payees = "; ".join(f"{r.get('name')} -> {r['account']}" for r in answer["payment"]["recipients"])
         status = answer["action_status"] or "drafted"
         s += f" [payment {status}: {payees}]"
+    elif answer.get("email"):
+        s += f" [email {answer['action_status'] or 'drafted'} to {answer['email']['to']}]"
+    elif answer.get("action") and answer["action"].get("data"):
+        a, st = answer["action"], answer["action_status"] or "drafted"
+        d = a["data"]
+        s += (f" [access change {st}: {d.get('user')} -> {d.get('role')}]" if a["kind"] == "grant_access"
+              else f" [password reset {st}: {d.get('user')} -> {d.get('send_to')}]")
     return s
 
 
@@ -147,6 +163,22 @@ def replays() -> list[dict]:
 def vault() -> list[dict]:
     rows = db.query("SELECT * FROM vault ORDER BY quarantined_at")
     return [{**r, "metadata": json.loads(r["metadata"]), "score": json.loads(r["score"] or "null")} for r in rows]
+
+
+def enforce_retention(days: int | None = None) -> list[str]:
+    """Policy retention: purge vault content older than vault_retention_days (hash + metadata kept)."""
+    days = fields.config.POLICY["vault_retention_days"] if days is None else days
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    expired = []
+    for row in db.query("SELECT memory_id, quarantined_at FROM vault WHERE state IN ('quarantined', 'restored')"):
+        if datetime.fromisoformat(row["quarantined_at"]) < cutoff:
+            db.execute("UPDATE vault SET state = 'purged', content = '[purged: retention policy]' WHERE memory_id = ?",
+                       (row["memory_id"],))
+            expired.append(row["memory_id"])
+    if expired:
+        db.log_event("retention", f"Retention policy ({days} days) purged {', '.join(expired)} from the vault",
+                     memory_ids=expired)
+    return expired
 
 
 def approve() -> list[str]:

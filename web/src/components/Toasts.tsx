@@ -1,11 +1,12 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Ban, CheckCircle2, Flag, Info, TriangleAlert } from "lucide-react";
+import { Ban, CheckCircle2, Flag, Info, ScanSearch, TriangleAlert } from "lucide-react";
 
 export interface Toast { id: number; kind: string; message: string }
 
 const ICONS: Record<string, React.ReactNode> = {
   blocked: <Ban className="h-4 w-4 text-bad" />,
   injected: <TriangleAlert className="h-4 w-4 text-bad" />,
+  ingested: <ScanSearch className="h-4 w-4 text-accent" />,
   flagged: <Flag className="h-4 w-4 text-flag" />,
   healed: <CheckCircle2 className="h-4 w-4 text-clean" />,
   error: <TriangleAlert className="h-4 w-4 text-bad" />,

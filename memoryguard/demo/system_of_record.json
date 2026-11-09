@@ -1,5 +1,24 @@
 {
-  "_note": "Verified vendor payee details - the source of truth. All names and numbers are fictional.",
+  "_note": "Verified vendor payee details and company directory - the source of truth. All names and numbers are fictional.",
+  "it": {
+    "admins": ["kavya.menon@northwind.example", "rohan.das@northwind.example"],
+    "employees": {
+      "John Mathew": {"email": "john.mathew@northwind.example", "phone": "+91-98200-11223", "department": "Sales", "role": "standard user"},
+      "Meera Iyer": {"email": "meera.iyer@northwind.example", "phone": "+91-98200-44556", "department": "Finance", "role": "standard user"},
+      "Kavya Menon": {"email": "kavya.menon@northwind.example", "phone": "+91-98200-77889", "department": "IT Security", "role": "administrator"},
+      "Rohan Das": {"email": "rohan.das@northwind.example", "phone": "+91-98200-99001", "department": "IT Operations", "role": "administrator"}
+    }
+  },
+  "directory": {
+    "company": "Northwind Traders",
+    "internal_domain": "northwind.example",
+    "internal_audit": "audit@northwind.example",
+    "approved_external": [
+      "accounts@acme-supplies.example",
+      "billing@bharat-logistics.example",
+      "finance@nova-packaging.example"
+    ]
+  },
   "vendors": {
     "Acme Supplies": {
       "account": "4021-7783-1190",

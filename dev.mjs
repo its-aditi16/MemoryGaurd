@@ -1,7 +1,12 @@
 // One command to run MemoryGuard: FastAPI on :8000 + Vite dashboard on :5173.
 // Usage (from the project root):  npm run dev
+//
+// Security: a fresh random API token is created for every run and shared only with the API and
+// the Vite proxy (written to memoryguard/data/.api_token, which is gitignored). Browser JavaScript
+// never sees it, so other websites cannot call the API.
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,12 +19,18 @@ if (!existsSync(python)) {
   process.exit(1);
 }
 
+const dataDir = path.join(root, "memoryguard", "data");
+mkdirSync(dataDir, { recursive: true });
+const token = randomBytes(32).toString("base64url");
+writeFileSync(path.join(dataDir, ".api_token"), token, { mode: 0o600 });
+const env = { ...process.env, MG_API_TOKEN: token };
+
 const procs = [
-  spawn(python, ["-m", "uvicorn", "api:app", "--port", "8000"], {
-    cwd: path.join(root, "memoryguard"), stdio: "inherit",
+  spawn(python, ["-m", "uvicorn", "api:app", "--host", "127.0.0.1", "--port", "8000"], {
+    cwd: path.join(root, "memoryguard"), stdio: "inherit", env,
   }),
   spawn(win ? "npm.cmd" : "npm", ["run", "dev"], {
-    cwd: path.join(root, "web"), stdio: "inherit", shell: win,
+    cwd: path.join(root, "web"), stdio: "inherit", shell: win, env,
   }),
 ];
 

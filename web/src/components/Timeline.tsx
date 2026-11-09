@@ -3,7 +3,8 @@ import { Card, Empty, SectionLabel, fmtTime } from "./ui";
 
 // Status colour only where the event carries that meaning.
 const KIND_TONE: Record<string, string> = {
-  injected: "bg-bad", blocked: "bg-bad", flagged: "bg-flag", held: "bg-flag", recalled: "bg-flag",
+  injected: "bg-bad", ingested: "bg-accent", blocked: "bg-bad", would_block: "bg-flag", policy: "bg-accent",
+  disclosure_blocked: "bg-bad", retention: "bg-quar", answer: "bg-gray-600", flagged: "bg-flag", held: "bg-flag", recalled: "bg-flag",
   quarantined: "bg-quar", approved: "bg-quar", healed: "bg-clean", drafted: "bg-clean", reset: "bg-accent",
   undone: "bg-accent", guard: "bg-accent", llm_error: "bg-flag",
 };

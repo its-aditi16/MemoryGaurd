@@ -60,3 +60,80 @@ def system_of_record() -> dict:
     import json
 
     return json.loads(SYSTEM_OF_RECORD.read_text())["vendors"]
+
+
+def it_directory() -> dict:
+    """IT source of truth: official admin list + registered employee contacts (truth for the helpdesk gate)."""
+    import json
+
+    return json.loads(SYSTEM_OF_RECORD.read_text())["it"]
+
+
+def directory() -> dict:
+    """Company directory: internal domain + approved external recipients (truth for the email gate)."""
+    import json
+
+    return json.loads(SYSTEM_OF_RECORD.read_text())["directory"]
+
+
+# ---- Local API access (security) --------------------------------------------
+# A random token shared only by the API and the Vite proxy (dev.mjs creates it per run).
+# Browser JavaScript never sees it, so other websites cannot call the API.
+API_TOKEN_FILE = DATA_DIR / ".api_token"
+
+
+def _api_token() -> str:
+    import secrets
+
+    token = os.getenv("MG_API_TOKEN")
+    if token:
+        return token
+    if API_TOKEN_FILE.exists() and API_TOKEN_FILE.read_text().strip():
+        return API_TOKEN_FILE.read_text().strip()
+    token = secrets.token_urlsafe(32)
+    API_TOKEN_FILE.write_text(token)
+    return token
+
+
+API_TOKEN = _api_token()
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+ALLOWED_ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173"}
+MAX_QUESTION_CHARS = 1000
+MAX_INGEST_TEXT_CHARS = 20000
+
+# ---- Deployment policy (FDE): one reviewed file per customer, fail closed ----
+POLICY_FILE = PKG_DIR / "deploy" / "policy.json"
+AUDIT_LOG = DATA_DIR / "audit.jsonl"
+KNOWN_ACTIONS = {"draft_payment", "draft_email", "grant_access", "reset_password"}
+
+
+def _load_policy() -> dict:
+    import json
+
+    try:
+        p = json.loads(POLICY_FILE.read_text())
+    except FileNotFoundError:
+        raise SystemExit(f"[MemoryGuard] Refusing to start: policy file missing ({POLICY_FILE})")
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"[MemoryGuard] Refusing to start: policy file is not valid JSON ({exc})")
+    problems = []
+    if p.get("enforcement") not in ("monitor", "enforce"):
+        problems.append("enforcement must be 'monitor' or 'enforce'")
+    if not isinstance(p.get("allowed_actions"), list) or not set(p["allowed_actions"]) <= KNOWN_ACTIONS:
+        problems.append(f"allowed_actions must be a subset of {sorted(KNOWN_ACTIONS)}")
+    if not isinstance(p.get("ingest_domain_allowlist"), list):
+        problems.append("ingest_domain_allowlist must be a list (empty = any public site)")
+    if not isinstance(p.get("ingest_sender_allowlist"), list):
+        problems.append("ingest_sender_allowlist must be a list of addresses or @domains (empty = any sender)")
+    if not isinstance(p.get("llm_providers_allowed"), list):
+        problems.append("llm_providers_allowed must be a list")
+    elif LLM_PROVIDER not in p["llm_providers_allowed"]:
+        problems.append(f"LLM_PROVIDER '{LLM_PROVIDER}' is not in llm_providers_allowed {p['llm_providers_allowed']}")
+    if not isinstance(p.get("vault_retention_days"), int) or p["vault_retention_days"] < 1:
+        problems.append("vault_retention_days must be a positive integer")
+    if problems:
+        raise SystemExit("[MemoryGuard] Refusing to start, policy invalid: " + "; ".join(problems))
+    return p
+
+
+POLICY = _load_policy()

@@ -55,7 +55,7 @@ export function KpiRow({ metrics }: { metrics: Metrics | null }) {
       <Kpi label="Quarantined" value={m?.quarantined ?? null} hint="Moved to the vault"
         icon={<Archive className={`h-4 w-4 ${m?.quarantined ? "text-quar" : "text-gray-600"}`} />} />
       <Kpi label="Time to detect" value={m?.time_to_detect ?? null} decimals={1} unit="s"
-        hint="Injection → payment blocked" icon={<Timer className="h-4 w-4 text-accent" />} />
+        hint="Injection → harmful action blocked" icon={<Timer className="h-4 w-4 text-accent" />} />
       <Kpi label="Time to heal" value={m?.time_to_heal ?? null} decimals={1} unit="s"
         hint="Quarantine + replay" icon={<TimerReset className="h-4 w-4 text-accent" />} />
     </div>

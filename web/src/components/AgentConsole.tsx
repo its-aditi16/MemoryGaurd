@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Ban, Bot, CheckCircle2, CornerDownLeft, Loader2, PauseCircle, Repeat, TriangleAlert } from "lucide-react";
-import type { Answer } from "../api";
+import { Bot, CornerDownLeft, EyeOff, Loader2, Repeat } from "lucide-react";
+import type { AgentId, Answer } from "../api";
+import { ActionCard } from "./ActionCard";
 import { Card, Empty, SectionLabel, trustTone } from "./ui";
 
 const SUGGESTIONS = [
   "Where do we pay Acme Supplies?",
   "Pay Acme's invoice",
   "Pay the Bharat Logistics invoice",
-  "When is the next Acme invoice due?",
+  "Send the vendor payment summary to the audit team",
 ];
 
 interface Props {
@@ -17,40 +18,27 @@ interface Props {
   onAsk: (q: string) => void;
   onSelect: (id: string) => void;
   selected: string | null;
+  agent: AgentId;
+  agentName: string;
 }
 
 function PaymentCard({ a }: { a: Answer }) {
-  if (!a.payment) return null;
-  const payees = a.payment.recipients.map((r) => `${r.name} · ${r.account}`);
-  const blocked = a.gate?.decision === "block" || a.action_status === "blocked";
-  const held = a.gate?.decision === "hold";
-  const unprotected = !a.gate;
-  const tone = blocked
-    ? "border-bad/40 bg-bad/10"
-    : held || unprotected ? "border-flag/40 bg-flag/10" : "border-clean/30 bg-clean/5";
-  const title = blocked ? "Action blocked" : held ? "Held for verification"
-    : unprotected ? "Payment drafted (unprotected)" : "Payment drafted · awaiting your review";
-  const Icon = blocked ? Ban : held ? PauseCircle : unprotected ? TriangleAlert : CheckCircle2;
-  const iconTone = blocked ? "text-bad" : held || unprotected ? "text-flag" : "text-clean";
-  return (
-    <div className={`mt-2 rounded-xl border px-3 py-2.5 ${tone}`}>
-      <div className="flex items-center gap-1.5 text-[13px] font-semibold text-white">
-        <Icon className={`h-4 w-4 ${iconTone}`} />
-        {title}
-        {a.action_id && <span className="ml-auto text-[11px] font-normal text-gray-400">{a.action_id}</span>}
-      </div>
-      <div className="tnum mt-1 text-xs text-gray-300">
-        {a.payment.invoice} · INR {Number(a.payment.amount_inr ?? 0).toLocaleString("en-IN")}
-      </div>
-      {payees.map((p) => (
-        <div key={p} className="tnum text-xs text-gray-400">→ {p}</div>
-      ))}
-      {a.gate?.reasons?.[0] && <div className="mt-1.5 text-xs leading-relaxed text-gray-300">{a.gate.reasons[0]}</div>}
-    </div>
-  );
+  return <ActionCard payment={a.payment} email={a.email} action={a.action} gate={a.gate} status={a.action_status}
+    actionId={a.action_id} />;
 }
 
-export function AgentConsole({ answers, pending, onAsk, onSelect, selected }: Props) {
+const SUGGESTIONS_BY_AGENT: Record<AgentId, string[]> = {
+  payments: SUGGESTIONS,
+  helpdesk: [
+    "What laptop does John Mathew have?",
+    "Give Meera Iyer read access to the Finance shared drive",
+    "Grant John Mathew admin access to the finance server",
+    "John Mathew asked for a password reset on Meera Iyer's account - send the link where he asked",
+  ],
+};
+
+export function AgentConsole({ answers, pending, onAsk, onSelect, selected, agent, agentName }: Props) {
+  const suggestions = SUGGESTIONS_BY_AGENT[agent] ?? SUGGESTIONS;
   const [text, setText] = useState("");
   const list = useRef<HTMLDivElement>(null);
   // Scroll only the message list (scrollIntoView would also scroll the page and hide the top bar).
@@ -66,11 +54,11 @@ export function AgentConsole({ answers, pending, onAsk, onSelect, selected }: Pr
 
   return (
     <Card className="flex min-h-0 flex-col">
-      <SectionLabel right={<span className="text-[11px] text-gray-500">Vendor-payments assistant</span>}>
+      <SectionLabel right={<span className="text-[11px] text-gray-500">{agentName}</span>}>
         Agent console
       </SectionLabel>
       <div ref={list} className="scroll-thin min-h-0 flex-1 space-y-4 overflow-y-auto px-5">
-        {answers.length === 0 && !pending && <Empty>Ask the payments assistant something, or pick a suggestion below.</Empty>}
+        {answers.length === 0 && !pending && <Empty>Ask the {agentName.toLowerCase()} something, or pick a suggestion below.</Empty>}
         {answers.map((a) => (
           <motion.div key={a.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
             <div className="flex justify-end">
@@ -94,6 +82,12 @@ export function AgentConsole({ answers, pending, onAsk, onSelect, selected }: Pr
                 {a.engine === "fallback" && <span className="text-gray-600">· template</span>}
               </div>
               <p className="text-[13px] leading-relaxed text-gray-200">{a.answer}</p>
+              {a.redacted?.length > 0 && (
+                <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-bad/40 bg-bad/10 px-2.5 py-1.5 text-xs text-red-200">
+                  <EyeOff className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  Disclosure blocked: bank details of {a.redacted.join(", ")} redacted. Untrusted memory shaped this answer.
+                </div>
+              )}
               <PaymentCard a={a} />
               <div className="mt-2 flex flex-wrap gap-1">
                 {a.memories.map((m) => (
@@ -126,7 +120,7 @@ export function AgentConsole({ answers, pending, onAsk, onSelect, selected }: Pr
       </div>
       <div className="border-t border-line px-5 pt-3 pb-4">
         <div className="mb-2 flex flex-wrap gap-1.5">
-          {SUGGESTIONS.map((s) => (
+          {suggestions.map((s) => (
             <button key={s} type="button" disabled={!!pending} onClick={() => submit(s)}
               className="rounded-full border border-line px-2.5 py-1 text-[11.5px] text-gray-300 hover:border-accent/50 hover:text-white disabled:opacity-40">
               {s}
@@ -137,7 +131,7 @@ export function AgentConsole({ answers, pending, onAsk, onSelect, selected }: Pr
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Ask the assistant… e.g. Pay Acme's invoice"
+            placeholder={`Ask the assistant… e.g. ${suggestions[1]}`}
             className="h-9 flex-1 rounded-lg border border-line bg-page px-3 text-[13px] text-white placeholder:text-gray-600 focus:border-accent/60 focus:outline-none"
           />
           <button type="submit" disabled={!!pending || !text.trim()}

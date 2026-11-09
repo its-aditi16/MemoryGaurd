@@ -1,0 +1,12 @@
+{
+  "_comment": "Per-deployment security policy (reviewed with the customer's security team). The server refuses to start if this file is missing or invalid.",
+  "customer": "Northwind Traders (demo)",
+  "enforcement": "enforce",
+  "allowed_actions": ["draft_payment", "draft_email", "grant_access", "reset_password"],
+  "require_human_review": true,
+  "ingest_domain_allowlist": [],
+  "ingest_sender_allowlist": [],
+  "llm_providers_allowed": ["groq", "anthropic", "openai", "none"],
+  "pseudonymize_llm_inputs": true,
+  "vault_retention_days": 30
+}
