@@ -51,6 +51,26 @@ def main() -> int:
     except FileNotFoundError:
         record(None, ".env not tracked by git", "git not installed")
 
+    if config.MEMORY_BACKEND == "hindsight":
+        local = "127.0.0.1" in config.HINDSIGHT_URL or "localhost" in config.HINDSIGHT_URL
+        try:
+            hv = httpx.get(f"{config.HINDSIGHT_URL.rstrip('/')}/version", timeout=10,
+                           headers={"Authorization": f"Bearer {config.HINDSIGHT_API_KEY}"} if config.HINDSIGHT_API_KEY else None)
+            record(hv.status_code == 200, "Hindsight memory backend reachable",
+                   f"{'local server' if local else 'Hindsight Cloud'}, api {hv.json().get('api_version', '?')}")
+        except httpx.HTTPError as exc:
+            record(False, "Hindsight memory backend reachable", f"{config.HINDSIGHT_URL}: {exc.__class__.__name__}")
+        if not local:
+            record(bool(config.HINDSIGHT_API_KEY), "Hindsight Cloud API key set (in .env only)")
+        elif _lan_ip():
+            try:
+                with socket.create_connection((_lan_ip(), 8888), timeout=2):
+                    record(False, "Local Hindsight server listens only on localhost", "reachable from the network")
+            except OSError:
+                record(True, "Local Hindsight server listens only on localhost")
+    else:
+        record(None, "Memory backend", "local store (set MEMORY_BACKEND=hindsight for Hindsight)")
+
     v = db.verify_audit()
     record(v["ok"], "Audit log hash chain intact", f"{v['entries']} entries")
 

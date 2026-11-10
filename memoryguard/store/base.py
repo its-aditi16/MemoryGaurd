@@ -29,6 +29,10 @@ class MemoryStore(ABC):
     def retain(self, content: str, metadata: dict) -> str:
         """Store a memory; return its id."""
 
+    def retain_many(self, items: list[tuple[str, dict]]) -> list[str]:
+        """Store several memories; backends with a batch API override this."""
+        return [self.retain(content, metadata) for content, metadata in items]
+
     @abstractmethod
     def recall(self, query: str, k: int = 5) -> list[Memory]:
         """Return up to k memories most relevant to query, best first."""
@@ -49,3 +53,6 @@ class MemoryStore(ABC):
     @abstractmethod
     def clear(self) -> None:
         """Remove every memory (used by demo reset)."""
+
+    def set_namespace(self, name: str) -> None:
+        """Select the memory bank for an agent (Hindsight: one bank per agent). Local store: no-op."""

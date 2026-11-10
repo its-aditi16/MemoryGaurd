@@ -6,3 +6,4 @@ numpy
 networkx
 sentence-transformers
 anthropic
+hindsight-client==1.2.0

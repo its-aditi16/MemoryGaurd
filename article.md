@@ -31,7 +31,32 @@ MemoryGuard sits around that memory layer, not inside the model:
             └──────────────► heal: quarantine, replay, audit ◄──┘
 ```
 
-Hindsight does what a memory layer should: durable storage, semantic recall, and metadata travelling with every memory. I didn't want to build a vector store; I wanted to build the security around one. The rest of this post covers the decisions that mattered.
+Hindsight does what a memory layer should: durable storage, recall that fuses semantic, keyword, graph and temporal search, and metadata travelling with every memory. I didn't want to build a vector store; I wanted to build the security around one.
+
+The integration is small on purpose. Every memory is retained with its MemoryGuard id as the Hindsight `document_id` and its provenance as metadata and tags. The bank uses the `chunks` extraction mode, so the exact original text is stored, which matters when a gate has to compare account numbers character by character:
+
+```python
+item = {
+    "content": content,
+    "context": f"{meta.get('source_class')} memory from {meta.get('source_id')}",
+    "document_id": memory_id,
+    "metadata": {k: str(meta[k]) for k in META_FIELDS if k in meta},
+    "tags": [f"source:{meta.get('source_class')}", f"session:{meta.get('session_id')}"],
+}
+self.client.retain(self.bank_id, item.pop("content"), **item)
+```
+
+On the way back, every recalled fact carries that `document_id`, so it maps to exactly one memory with its provenance attached. A quarantined memory is deleted from Hindsight, so it can never be recalled again:
+
+```python
+for rank, r in enumerate(resp.results or []):
+    doc = r.document_id or (r.metadata or {}).get("memory_id")
+    m = self.get(doc)
+    if m is None:  # deleted (quarantined) or unknown - never surface it
+        continue
+```
+
+The rest of this post covers the decisions that mattered.
 
 ## Decision 1: trust comes from *where*, never from *what*
 

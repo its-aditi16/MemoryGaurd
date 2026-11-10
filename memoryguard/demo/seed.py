@@ -4,7 +4,7 @@ Run:  python -m demo.seed     (from the memoryguard/ directory)
 """
 import config
 import db
-from guard.provenance import remember
+from guard.provenance import remember_many
 from store import get_store
 
 
@@ -88,11 +88,9 @@ SEEDS = {
 
 
 def seed(agent: str = "payments") -> list[str]:
-    """Write the agent's verified records and seed memories (with lineage); return their ids."""
-    return [
-        remember(content, source_class, source_id, event_time=event_time)
-        for source_class, source_id, content, event_time in SEEDS[agent]()
-    ]
+    """Write the agent's verified records and seed memories (with lineage) in one batch; return their ids."""
+    return remember_many([(content, source_class, source_id, "seed", event_time)
+                          for source_class, source_id, content, event_time in SEEDS[agent]()])
 
 
 def reset(agent: str | None = None) -> list[str]:
@@ -100,6 +98,7 @@ def reset(agent: str | None = None) -> list[str]:
     agent = agent or db.kv_get("agent", "payments")
     if agent not in SEEDS:
         raise ValueError(f"unknown agent {agent}")
+    get_store().set_namespace(agent)  # Hindsight: each agent has its own memory bank
     get_store().clear()
     db.reset()
     db.kv_set("guard_enabled", True)

@@ -2,6 +2,7 @@
 
 Run from memoryguard/:  uvicorn api:app --reload --port 8000
 """
+import asyncio
 import hmac
 import json
 import threading
@@ -29,12 +30,19 @@ from store import Memory, get_store
 _lock = threading.Lock()  # one mutating operation at a time keeps the demo state consistent
 
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    if not get_store().list_all():
+def _startup() -> None:
+    store = get_store()
+    store.set_namespace(agent.current_agent())
+    if not store.list_all():
         seed.reset()
     heal.enforce_retention()  # policy: vault content older than vault_retention_days is purged
     detectors.attack_similarity("warm up the embedding model")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Run in a worker thread: sync clients (e.g. Hindsight's) can't run inside the server's event loop.
+    await asyncio.to_thread(_startup)
     yield
 
 
@@ -298,6 +306,9 @@ def metrics():
         "audit": db.verify_audit(),
         "customer": config.POLICY.get("customer"),
         "backend": get_store().name,
+        "backend_where": (None if get_store().name != "hindsight" else
+                          "local" if "127.0.0.1" in config.HINDSIGHT_URL or "localhost" in config.HINDSIGHT_URL
+                          else "cloud"),
         "llm": config.LLM_PROVIDER if llm.available() else "fallback",
         "attacks": {k: v["name"] for k, v in attacks.for_agent(agent.current_agent()).items()},
         "agent": agent.current_agent(),

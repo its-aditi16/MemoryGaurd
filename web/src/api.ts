@@ -16,6 +16,7 @@ export interface Metrics {
   incident_active: boolean;
   guard_enabled: boolean;
   backend: string;
+  backend_where: "cloud" | "local" | null;
   llm: string;
   attacks: Record<string, string>;
   enforcement: "monitor" | "enforce";

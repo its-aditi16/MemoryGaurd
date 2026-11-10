@@ -60,7 +60,7 @@ export function TopBar(p: Props) {
               </button>
             ))}
           </div>
-          <span className={badge}>Memory: <span className="text-gray-200 capitalize">{m?.backend ?? "…"}</span></span>
+          <span className={badge}>Memory: <span className="text-gray-200 capitalize">{m?.backend ?? "…"}{m?.backend_where ? ` ${m.backend_where}` : ""}</span></span>
           <span className={badge}>LLM: <span className="text-gray-200">{m?.llm ?? "…"}</span></span>
           <button type="button" onClick={p.onToggleGuard} title="Turn protection off to prove the threat"
             className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium ${

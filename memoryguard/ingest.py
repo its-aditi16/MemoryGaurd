@@ -18,7 +18,7 @@ import httpx
 
 import config  # noqa: F401  (loads .env before FETCH_USER_AGENT is read)
 import db
-from guard.provenance import now_iso, remember
+from guard.provenance import now_iso, remember_many
 from guard.score import explain, score_memory
 from store import get_store
 
@@ -265,7 +265,8 @@ def ingest_text(text: str, source_class: str = "email", scan: bool = True, title
 def _retain_and_scan(texts: list[tuple[str, bool]], source_class: str, source_id: str, scan: bool, label: str) -> dict:
     from guard import gate
 
-    ids = [remember(t, source_class, source_id, session_id="ingest", event_time=now_iso()) for t, _ in texts]
+    now = now_iso()
+    ids = remember_many([(t, source_class, source_id, "ingest", now) for t, _ in texts])  # one batch call
     store = get_store()
     with ThreadPoolExecutor(max_workers=4) as pool:  # LLM-judge calls run in parallel
         scores = list(pool.map(lambda mid: score_memory(store.get(mid)), ids))

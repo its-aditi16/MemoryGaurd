@@ -5,3 +5,5 @@ __pycache__/
 memoryguard/data/
 web/node_modules/
 web/dist/
+.venv-hindsight/
+.env.example

@@ -22,6 +22,11 @@ GUARD_DB = DATA_DIR / "guard.db"
 SYSTEM_OF_RECORD = PKG_DIR / "demo" / "system_of_record.json"
 
 MEMORY_BACKEND = os.getenv("MEMORY_BACKEND", "local").lower()  # local | hindsight
+HINDSIGHT_URL = os.getenv("HINDSIGHT_URL", "http://127.0.0.1:8888")  # or https://api.hindsight.vectorize.io
+HINDSIGHT_API_KEY = os.getenv("HINDSIGHT_API_KEY") or None  # required for Hindsight Cloud
+HINDSIGHT_BANK_PREFIX = os.getenv("HINDSIGHT_BANK_PREFIX", "memoryguard")
+# 'chunks' keeps the exact original text (no LLM rewriting), which the gate and detectors need.
+HINDSIGHT_EXTRACTION_MODE = os.getenv("HINDSIGHT_EXTRACTION_MODE", "chunks")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
 # LLM: groq | anthropic | openai (any OpenAI-compatible endpoint) | none

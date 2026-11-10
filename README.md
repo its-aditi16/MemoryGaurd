@@ -24,6 +24,36 @@ copy .env.example .env     # then put your Groq key in .env
 `LLM_BASE_URL`, and `MEMORY_BACKEND=local`. With no key the agent falls back to a deterministic template,
 so the demo still runs. The first start downloads the MiniLM embedding model (~90 MB); after that it works offline.
 
+## Memory backend: Hindsight
+
+MemoryGuard stores the agent's long-term memory in [Hindsight](https://github.com/vectorize-io/hindsight)
+(`MEMORY_BACKEND=hindsight`), with a local SQLite store as a fallback (`MEMORY_BACKEND=local`).
+
+- Each memory is retained with its provenance envelope as Hindsight **metadata + tags** and its MemoryGuard id as
+  the Hindsight **`document_id`**; recall results map back to memories through `document_id`.
+- **One Hindsight memory bank per agent** (`memoryguard-payments`, `memoryguard-helpdesk`).
+- Banks use extraction mode **`chunks`**, so the exact original text is kept (the gate needs exact account numbers),
+  and observations are off (no background LLM rewriting).
+- Quarantine deletes the Hindsight document, so a poisoned memory can never be recalled again.
+- Seeding and multi-chunk ingest use one `retain_batch` call.
+
+**Option A: Hindsight Cloud** (what the demo uses). Add to `.env`:
+```
+MEMORY_BACKEND=hindsight
+HINDSIGHT_URL=https://api.hindsight.vectorize.io
+HINDSIGHT_API_KEY=hsk_...        # keep secret; .env is gitignored
+```
+
+**Option B: local Hindsight server** (offline, no Docker; embedded PostgreSQL + local embeddings):
+```powershell
+py -3.12 -m venv .venv-hindsight
+.\.venv-hindsight\Scripts\python -m pip install hindsight-api
+# .env: MEMORY_BACKEND=hindsight and HINDSIGHT_URL=http://127.0.0.1:8888 (or leave HINDSIGHT_URL unset)
+```
+`npm run dev` then starts the server on 127.0.0.1:8888 using your `LLM_PROVIDER` / `LLM_API_KEY`
+(the first start downloads the local embedding and reranker models). Tip: keep `.venv-hindsight` outside a
+OneDrive-synced folder; installing ~1.6 GB of small files into a synced folder is very slow.
+
 ## Run
 
 ```powershell
